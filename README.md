@@ -2,6 +2,8 @@
 
 Simple movie recommendation system using IMDb's non-commercial datasets.
 
+
+
 ## Setup
 
 1. **Download data** from https://datasets.imdbws.com/
@@ -49,4 +51,6 @@ Interstellar
 - pandas (data processing)
 - IMDb datasets (~10M titles, 7 TSV files)
 
+## Development Tools
 
+Local LLM integration via VS Code + Qwen for code completions and chat, compared against Claude for development workflow optimization.
