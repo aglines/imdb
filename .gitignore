@@ -1,2 +1,6 @@
 .env
 imdb.db
+imdb.db-shm
+.gitignore
+data/seen_movies.csv
+imdb.db-wal
