@@ -2,6 +2,7 @@ import os
 import re
 from dotenv import load_dotenv
 import csv
+import html
 
 # Load environment variables
 load_dotenv()
@@ -11,10 +12,10 @@ data_folder = os.getenv('MOVIE_RENTAL_RECEIPTS')
 
 def extract_movie_title(eml_content):
     # Pattern for Google emails
-    google_pattern = r'<span dir=3Dltr>(.*?)<br>'
-    
+    google_pattern = r'<span dir=3Dltr>(.*?)</span>'
+   
     # Pattern for Apple emails
-    apple_pattern = r'<span class=3D"title" dir=3D"auto" style=3D"font-weight:600;">(.*?)<br>'
+    apple_pattern = r'<span class=3D"title" dir=3D"auto" style=3D"font-weight:600;">(.*?)</span><br>'
     
     # Try Google pattern first
     google_match = re.search(google_pattern, eml_content, re.DOTALL)
@@ -38,6 +39,18 @@ def process_eml_files(folder_path):
                 content = f.read()
                 title = extract_movie_title(content)
                 if title:
+                    # Text handling section
+                    # Remove embedded whitespace (newlines, tabs, etc)
+                    title = ' '.join(title.split())
+                    
+                    # Remove surrounding quotes if present
+                    if (title.startswith('"') and title.endswith('"')) or \
+                       (title.startswith("'") and title.endswith("'")):
+                        title = title[1:-1]
+
+                    # Convert HTML entities
+                    title = html.unescape(title)
+                    
                     movie_titles.append(title)
     
     return movie_titles
@@ -51,7 +64,7 @@ with open(output_file, 'a', newline='', encoding='utf-8') as csvfile:
     writer = csv.writer(csvfile)
     # Write header if file is empty
     if os.path.getsize(output_file) == 0:
-        writer.writerow(['Movie Title'])
+        writer.writerow(['title'])
     
     for title in titles:
         writer.writerow([title])
