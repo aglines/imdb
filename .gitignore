@@ -4,3 +4,9 @@ imdb.db-shm
 .gitignore
 data/*
 imdb.db-wal
+tests/lists.sql
+tests/lists_0.sql
+fat_characters_more.txt
+.gitignore
+captain_actors.txt
+fat_characters.txt
