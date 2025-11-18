@@ -5,8 +5,11 @@ from dotenv import load_dotenv
 
 # Load env vars
 load_dotenv()
-data_folder = os.getenv('LOCAL_DATA_FOLDER')
-csv_path = os.path.join(data_folder, 'seen_movies.csv')
+# data_folder = os.getenv('LOCAL_DATA_FOLDER')
+# csv_path = os.path.join(data_folder, 'seen_movies.csv')
+data_folder = os.getenv('MOVIE_RENTAL_RECEIPTS')
+csv_path = os.path.join(data_folder, 'rented_movies.csv')
+
 
 # Load seen movies from CSV
 seen = pd.read_csv(csv_path)  # Assumes column 'title'
@@ -15,21 +18,53 @@ conn = sqlite3.connect('imdb.db')
 # Get tconst values for seen movies
 tconsts = []
 for title in seen['title']:
+
+    title = title.strip()
+    # Remove surrounding quotes if present
+    if (title.startswith('"') and title.endswith('"')) or (title.startswith("'") and title.endswith("'")):
+       title = title[1:-1]
+
+    # Escape single quotes for SQL query
+    escaped_title = title.replace("'", "''")
+    
+    # Try exact match first
     query = f"""
     SELECT tconst FROM "title.basics" 
-    WHERE titleType='movie' AND LOWER(primaryTitle) LIKE LOWER('%{title}%')
+    WHERE titleType='movie' AND LOWER(primaryTitle) = LOWER('{escaped_title}')
     LIMIT 1
     """
-    result = pd.read_sql(query, conn)
-    if not result.empty:
-        tconsts.append(result['tconst'][0])
+    try:
+        result = pd.read_sql(query, conn)
+        
+        # Fall back to fuzzy if no exact match
+        if result.empty:
+            query = f"""
+            SELECT tconst FROM "title.basics" 
+            WHERE titleType='movie' AND LOWER(primaryTitle) LIKE LOWER('%{escaped_title}%')
+            LIMIT 1
+            """
+            result = pd.read_sql(query, conn)
+        
+        if not result.empty:
+            tconsts.append(result['tconst'][0])
+            # print(f"Found: '{title}'")
+        else:
+            print(f"Warning: No match for '{title}'. Skipping...")
+    except Exception as e:
+        print(f"Error processing '{title}': {e}. Skipping...")
+
+# Check if any matches found
+if not tconsts:
+    print("No matching movies found in database")
+    conn.close()
+    exit()
 
 # Build recommendation query
-my_movies_cte = " UNION SELECT ".join([f"'{tc}'" for tc in tconsts])
+my_movies_cte = " UNION ALL SELECT ".join([f"'{tc}' AS tconst" for tc in tconsts])
 
 recommend_query = f"""
 WITH my_movies AS (
-  SELECT {my_movies_cte} AS tconst
+  SELECT {my_movies_cte}
 ),
 my_genres AS (
   SELECT TRIM(value) AS genre, COUNT(*) AS cnt
